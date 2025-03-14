@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Text, Animated } from 'react-native';
+import { useGame } from '../context/GameContext';
 
 interface TimerProps {
   isRunning: boolean;
   onTimeUpdate: (time: number) => void;
+  timerId?: string;
 }
 
-const Timer: React.FC<TimerProps> = ({ isRunning, onTimeUpdate }) => {
+const Timer: React.FC<TimerProps> = ({ isRunning, onTimeUpdate, timerId = 'default' }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
-  const startTime = useRef(Date.now());
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const { registerTimer, unregisterTimer } = useGame();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   
@@ -49,42 +50,23 @@ const Timer: React.FC<TimerProps> = ({ isRunning, onTimeUpdate }) => {
     };
   }, [isRunning, elapsedTime > 5000]);
   
-  // Reset timer when running state changes
+  // Use the global timer from GameContext
   useEffect(() => {
+    const handleTimeUpdate = (time: number) => {
+      setElapsedTime(time);
+      onTimeUpdate(time);
+    };
+    
     if (isRunning) {
-      // Reset values when timer starts
-      setElapsedTime(0);
-      startTime.current = Date.now();
-      
-      // Clear any existing timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      
-      // Start a new timer
-      timerRef.current = setInterval(() => {
-        const currentTime = Date.now();
-        const newElapsedTime = currentTime - startTime.current;
-        
-        setElapsedTime(newElapsedTime);
-        onTimeUpdate(newElapsedTime);
-      }, 1000);
+      registerTimer(timerId, handleTimeUpdate);
     } else {
-      // Stop the timer when not running
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      unregisterTimer(timerId);
     }
     
-    // Clean up function
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      unregisterTimer(timerId);
     };
-  }, [isRunning]);
+  }, [isRunning, timerId, registerTimer, unregisterTimer, onTimeUpdate]);
   
   const formatTime = (timeMs: number) => {
     const seconds = Math.floor(timeMs / 1000);

@@ -264,7 +264,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ navigation }) => {
         visible={showExplanationModal}
         onRequestClose={closeExplanationModal}
       >
-        <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="flex-1 justify-center items-center bg-black/50 max-h-[100vh]">
           <View className="w-11/12 bg-white rounded-xl p-5 max-h-[80%]">
             <ScrollView>
               <Text className="text-xl font-bold text-center mb-4">
@@ -373,7 +373,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ navigation }) => {
                 </View>
               )}
             </ScrollView>
-            
+             
             <TouchableOpacity
               onPress={closeExplanationModal}
               className="bg-gray-200 rounded-lg p-3 mt-4 items-center"

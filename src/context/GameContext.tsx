@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { GameState, Question, PlayerAnswer, RoundResult } from '../types';
 import { questions } from '../data/questions';
 
@@ -9,6 +9,9 @@ interface GameContextType {
   nextRound: () => void;
   resetGame: () => void;
   getRandomQuestion: () => Question;
+  registerTimer: (id: string, callback: (time: number) => void) => void;
+  unregisterTimer: (id: string) => void;
+  resetTimerStartTime: (id: string) => void;
 }
 
 const initialGameState: GameState = {
@@ -27,6 +30,11 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   
+  // Global timer state
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerCallbacks = useRef<Map<string, (time: number) => void>>(new Map());
+  const timerStartTimes = useRef<Map<string, number>>(new Map());
+  
   // Initialize the game with a random question
   useEffect(() => {
     if (!gameState.currentQuestion) {
@@ -35,6 +43,59 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...prevState,
         currentQuestion: randomQuestion
       }));
+    }
+    
+    // Clean up the global timer on unmount
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Timer management functions
+  const startGlobalTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    
+    timerIntervalRef.current = setInterval(() => {
+      const currentTime = Date.now();
+      
+      // Update all registered timers
+      timerCallbacks.current.forEach((callback, id) => {
+        const startTime = timerStartTimes.current.get(id) || currentTime;
+        const elapsedTime = currentTime - startTime;
+        callback(elapsedTime);
+      });
+    }, 100); // Update more frequently for smoother UI
+  }, []);
+  
+  const registerTimer = useCallback((id: string, callback: (time: number) => void) => {
+    timerCallbacks.current.set(id, callback);
+    timerStartTimes.current.set(id, Date.now());
+    
+    // Start the global timer if it's not already running
+    if (!timerIntervalRef.current) {
+      startGlobalTimer();
+    }
+  }, [startGlobalTimer]);
+  
+  const unregisterTimer = useCallback((id: string) => {
+    timerCallbacks.current.delete(id);
+    timerStartTimes.current.delete(id);
+    
+    // If no more timers, stop the global interval
+    if (timerCallbacks.current.size === 0 && timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  }, []);
+  
+  const resetTimerStartTime = useCallback((id: string) => {
+    if (timerCallbacks.current.has(id)) {
+      timerStartTimes.current.set(id, Date.now());
     }
   }, []);
   
@@ -262,7 +323,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       submitAnswer,
       nextRound,
       resetGame,
-      getRandomQuestion
+      getRandomQuestion,
+      registerTimer,
+      unregisterTimer,
+      resetTimerStartTime
     }}>
       {children}
     </GameContext.Provider>

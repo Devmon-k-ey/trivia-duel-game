@@ -94,7 +94,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
           {isTimerRunning ? (
             <Timer 
               isRunning={isTimerRunning} 
-              onTimeUpdate={handleTimeUpdate} 
+              onTimeUpdate={handleTimeUpdate}
+              timerId={`player${gameState.currentPlayer}-round${gameState.currentRound}`}
             />
           ) : (
             <View className="bg-gray-600 rounded-full py-2 px-4">
@@ -127,4 +128,4 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
   );
 };
 
-export default GameScreen; 
+export default GameScreen;
